@@ -1,0 +1,74 @@
+version: '3.7'
+
+services:
+  edmv4-web:
+    image: edmv4-web
+    depends_on:
+      - edmv4-service
+    deploy:
+      replicas: 5
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+    ports: 
+      - "80:80"
+    networks:
+      - edmv4-net
+
+  edmv4-service:
+    image: edmv4-service
+    depends_on:
+      - edmv4-db
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 2
+        delay: 10s
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+    ports: 
+      - "8080:8080"
+      - "4848:4848"
+    networks:
+      - edmv4-net
+    volumes:
+      - edmv4-repo:/home/edmService/edmRepo
+  
+  #edmv4-pdf:
+
+  edmv4-db:
+    image: database
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - edmv4-db-data:/var/lib/postgresql/data/
+    networks:
+      - edmv4-net
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgresql-password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: edmv4
+    secrets:
+      - postgresql-password
+    ports:
+      - "5432:5432"
+
+secrets:
+  postgresql-password:
+    file: postgresql-pass.txt
+
+volumes:
+  edmv4-db-data:
+    external: true
+  edmv4-repo:
+    external: true
+
+networks:
+  edmv4-net:
+    driver: overlay
